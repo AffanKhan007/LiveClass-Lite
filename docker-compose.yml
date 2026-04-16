@@ -1,0 +1,103 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: liveclass-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - liveclass
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: liveclass-livekit
+    restart: unless-stopped
+    command:
+      - --config
+      - /etc/livekit.yaml
+      - --node-ip
+      - ${LIVEKIT_NODE_IP}
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "52000-52050:52000-52050/udp"
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    networks:
+      - liveclass
+
+  api:
+    build:
+      context: ./api
+    container_name: liveclass-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      API_HOST: ${API_HOST}
+      API_PORT: ${API_PORT}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_WS_URL: ${LIVEKIT_WS_URL}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    volumes:
+      - ./api:/app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - liveclass
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: liveclass-frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_LIVEKIT_WS_URL: ${VITE_LIVEKIT_WS_URL}
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:5173 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - liveclass
+
+volumes:
+  postgres_data:
+
+networks:
+  liveclass:
+    driver: bridge
