@@ -6,7 +6,7 @@ LiveClass Lite is a browser-based realtime virtual study room built around LiveK
 - `api`: FastAPI + SQLAlchemy
 - `db`: PostgreSQL
 - `livekit`: self-hosted LiveKit for local development
-- `docker-compose.yml`: one command to run the full stack
+- `docker-compose.yml`: one command to run the full stack.
 
 ## What it supports
 
@@ -20,7 +20,7 @@ LiveClass Lite is a browser-based realtime virtual study room built around LiveK
 - Quick emoji reactions using LiveKit data packets
 - Host role assignment to the first active joiner
 - MVP host moderation for mute and remove
-- PostgreSQL storage for rooms, sessions, chat history, and moderation events
+- PostgreSQL storage for rooms, sessions, chat history, and moderation events.
 
 ## Project structure
 
